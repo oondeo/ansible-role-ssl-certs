@@ -1,4 +1,7 @@
-- hosts: travis.dev
+- hosts: 172.20.0.2
   remote_user: root
   roles:
-    - ansible-role-ssl-certs
+    - role: ansible-role-ssl-certs
+      ssl_certs_common_name: "example.com"
+      ssl_certs_alt_names: "IP:127.0.0.1,DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc"
+      ssl_certs_path_group: "root"

@@ -2,8 +2,22 @@
   - name: Generate RSA key
     command: openssl genrsa -out {{ ssl_certs_privkey_path }} {{ ssl_certs_key_size }} creates={{ ssl_certs_privkey_path }}
 
+  - name: Create temp file for csr config
+    command: mktemp /tmp/ansible.XXXXXXXXX
+    register: ssl_certs_csr_tmp_file
+
+  - name: Create temp csr config
+    shell: "{{item}}"
+    with_items:
+      - cp /etc/ssl/openssl.cnf {{ ssl_certs_csr_tmp_file.stdout }}
+      - echo "[SAN]" >> {{ ssl_certs_csr_tmp_file.stdout }}
+      - echo "subjectAltName={{ ssl_certs_alt_names }}" >> {{ ssl_certs_csr_tmp_file.stdout }}
+    register: ssl_certs_csr_tmp_config
+    when: ssl_certs_csr_tmp_file
+
   - name: Generate CSR
-    command: openssl req -new -sha256 -subj "{{ ssl_certs_fields }}" -key {{ ssl_certs_privkey_path }} -out {{ ssl_certs_csr_path }} creates={{ ssl_certs_csr_path }}
+    command: openssl req -new -sha256 -subj "{{ ssl_certs_fields }}" -key {{ ssl_certs_privkey_path }} -reqexts SAN -config {{ ssl_certs_csr_tmp_file.stdout }} -out {{ ssl_certs_csr_path }} creates={{ ssl_certs_csr_path }}
+    when: ssl_certs_csr_tmp_config
 
   - name: Generate self-signed SSL certificate
     command: openssl req -nodes -x509 -days {{ ssl_certs_days }} -in {{ ssl_certs_csr_path }} -key {{ ssl_certs_privkey_path }} -out {{ ssl_certs_cert_path }} -extensions v3_ca creates={{ ssl_certs_cert_path }}
